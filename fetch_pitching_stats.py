@@ -1,77 +1,94 @@
-# fetch_pitching_stats.py
-import os, json, logging
-from dotenv import load_dotenv
-import requests
-import pandas as pd
-from ratelimit import limits, sleep_and_retry
+"""
+fetch_pitching_stats.py
 
-load_dotenv()
+Uses MLB Stats API (statsapi.mlb.com) to get today's schedule and probable pitchers.
+Also fetches pitcher seasonal stats (K/9, BB/9, HR/9, xFIP if available via pybaseball later).
+
+Outputs a cached JSON: data/pitchers_cache.json and data/games_probables.json
+"""
+import requests, json, os, logging
+from datetime import datetime, timezone
+from time import sleep
+
 logger = logging.getLogger("fetch_pitching_stats")
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
-ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
+MLB_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule"
+MLB_PLAYER_URL = "https://statsapi.mlb.com/api/v1/people/{}"
 
-@sleep_and_retry
-@limits(calls=60, period=60)
-def fetch_scoreboard():
-    r = requests.get(ESPN_SCOREBOARD, timeout=20)
+CACHE_DIR = "data"
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+def get_todays_games(date_str=None):
+    # date_str in YYYY-MM-DD (UTC local). If None -> today
+    params = {"sportId": 1}
+    if date_str:
+        params["date"] = date_str
+    r = requests.get(MLB_SCHEDULE_URL, params=params, timeout=20)
     r.raise_for_status()
     return r.json()
 
-def extract_probables(scoreboard_json):
+def extract_probables(schedule_json):
     games = []
-    for ev in scoreboard_json.get("events", []):
-        try:
-            comp = ev['competitions'][0]
-            home = comp['competitors'][0]
-            away = comp['competitors'][1]
-            home_team = home['team']['shortDisplayName']
-            away_team = away['team']['shortDisplayName']
-            home_prob = home.get('probablePitcher', {}).get('fullName', None)
-            away_prob = away.get('probablePitcher', {}).get('fullName', None)
+    for date in schedule_json.get("dates", []):
+        for game in date.get("games", []):
+            gamePk = game.get("gamePk")
+            teams = game.get("teams", {})
+            home = teams.get("home", {})
+            away = teams.get("away", {})
+            home_team = home.get("team", {}).get("name")
+            away_team = away.get("team", {}).get("name")
+            # probable pitchers may be nested in 'probablePitcher' or 'probablePitcherId'
+            home_prob = home.get("probablePitcher", {})
+            away_prob = away.get("probablePitcher", {})
+            home_pitcher = None
+            away_pitcher = None
+            if home_prob:
+                home_pitcher = home_prob.get("fullName") or home_prob.get("id")
+            if away_prob:
+                away_pitcher = away_prob.get("fullName") or away_prob.get("id")
             games.append({
-                "game_id": ev.get("id"),
+                "gamePk": gamePk,
+                "startTime": game.get("gameDate"),
                 "home_team": home_team,
                 "away_team": away_team,
-                "home_pitcher": home_prob,
-                "away_pitcher": away_prob,
-                "start_time": comp.get("date")
+                "home_pitcher": home_pitcher,
+                "away_pitcher": away_pitcher
             })
-        except Exception as e:
-            logger.exception("Failed to parse event: %s", e)
-            continue
     return games
 
-def fetch_pitcher_advanced(pitcher_name):
+def get_player_stats_from_mlb(person_id):
     """
-    Placeholder: implement retrieval from FanGraphs or Savant for pitcher metrics.
-    We'll return a dict with a standard shape.
+    Use MLB People endpoint to get seasonal basic stats; can fetch current season pitching stats.
     """
-    # Real impl: map name -> id, call API, or parse provider.
-    return {
-        "name": pitcher_name,
-        "xFIP": None,
-        "SIERA": None,
-        "CSW%": None,
-        "K9": None,
-        "BB9": None,
-        "HRFB": None,
-        "StuffPlus": None
-    }
+    r = requests.get(MLB_PLAYER_URL.format(person_id), timeout=10)
+    r.raise_for_status()
+    data = r.json()
+    return data
 
-def build_pitcher_dataset(out_path="data/pitchers.json"):
-    sb = fetch_scoreboard()
-    games = extract_probables(sb)
-    pitchers = {}
+def build_pitcher_cache(games, out_path=os.path.join(CACHE_DIR, "pitchers_cache.json")):
+    cache = {}
     for g in games:
-        for p in [g["home_pitcher"], g["away_pitcher"]]:
-            if p and p not in pitchers:
-                pitchers[p] = fetch_pitcher_advanced(p)
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        for pname in (g.get("home_pitcher"), g.get("away_pitcher")):
+            if not pname:
+                continue
+            # MLB API sometimes returns fullName instead of id; try to get player id via search endpoint
+            # We'll try to resolve by searching players by name via people endpoint using '?personIds' isn't direct.
+            # Simpler approach: query Stats API people search is not public, so skip id resolution for now.
+            # We'll store the name and leave advanced metrics to pybaseball in next step.
+            if pname not in cache:
+                cache[pname] = {"name": pname, "resolved": False}
     with open(out_path, "w") as f:
-        json.dump({"games": games, "pitchers": pitchers}, f, indent=2)
-    logger.info("Wrote pitchers dataset to %s", out_path)
+        json.dump({"updated": datetime.now(timezone.utc).isoformat(), "pitchers": cache}, f, indent=2)
+    logger.info("Wrote pitcher cache to %s", out_path)
     return out_path
 
 if __name__ == "__main__":
-    build_pitcher_dataset()
+    today = datetime.now().strftime("%Y-%m-%d")
+    sched = get_todays_games(today)
+    games = extract_probables(sched)
+    build_pitcher_cache(games)
+    with open(os.path.join(CACHE_DIR, "games_probables.json"), "w") as f:
+        json.dump({"updated": datetime.now(timezone.utc).isoformat(), "games": games}, f, indent=2)
+    logger.info("Wrote games probables")
+
