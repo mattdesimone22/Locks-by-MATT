@@ -1,0 +1,35 @@
+{
+  "date": "2025-10-02",
+  "games": [
+    {
+      "matchup": "Detroit Tigers vs Cleveland Guardians",
+      "pick": "Guardians ML",
+      "edge": 0.15,
+      "reason": "Guardians' starting pitcher Slade Cecconi has a strong CSW% and xFIP advantage. Tigers’ Jack Flaherty has struggled against right-handed lineups, giving Guardians an edge.",
+      "team_stats": "Guardians xFIP 3.10 | Tigers xFIP 3.80 | Guardians wRC+ 110 | Tigers wRC+ 100",
+      "player_stats": "Jose Ramirez xwOBA .420 | Harold Castro xwOBA .350 | Team Hard-Hit% 45%",
+      "odds": "Guardians ML -135 | Tigers ML +115",
+      "pitcher_matchup": "Jack Flaherty (DET) vs Slade Cecconi (CLE)"
+    },
+    {
+      "matchup": "San Diego Padres vs Chicago Cubs",
+      "pick": "Cubs ML",
+      "edge": 0.12,
+      "reason": "Cubs’ Jameson Taillon has high CSW% and low HR/FB ratio. Padres’ Yu Darvish has allowed high xwOBA against RHP-heavy lineups, giving Cubs an advantage.",
+      "team_stats": "Cubs xFIP 3.50 | Padres xFIP 3.70 | Cubs wRC+ 105 | Padres wRC+ 100",
+      "player_stats": "Nico Hoerner xwOBA .380 | Manny Machado xwOBA .370 | Team Barrel% 6.5%",
+      "odds": "Cubs ML -115 | Padres ML +105",
+      "pitcher_matchup": "Yu Darvish (SD) vs Jameson Taillon (CHC)"
+    },
+    {
+      "matchup": "Boston Red Sox vs New York Yankees",
+      "pick": "Yankees ML",
+      "edge": 0.18,
+      "reason": "Yankees’ Cam Schlittler has superior CSW% and low HR/FB against Red Sox hitters. Red Sox Connelly Early has struggled against elite right-handed bats, giving Yankees the edge.",
+      "team_stats": "Yankees xFIP 3.20 | Red Sox xFIP 3.50 | Yankees wRC+ 115 | Red Sox wRC+ 107",
+      "player_stats": "Aaron Judge xwOBA .430 | Matt Turner xwOBA .380 | Team Hard-Hit% 48%",
+      "odds": "Yankees ML -160 | Red Sox ML +140",
+      "pitcher_matchup": "Connelly Early (BOS) vs Cam Schlittler (NYY)"
+    }
+  ]
+}
