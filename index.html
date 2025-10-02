@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate AI MLB Picks Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.min.css"/>
+<style>
+body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+h1 { text-align: center; color: #222; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);}
+th, td { border: 1px solid #ddd; padding: 10px; text-align: left;}
+th { background-color: #007bff; color: white; }
+tr:nth-child(even) { background-color: #f9f9f9; }
+.tooltip { position: relative; display: inline-block; cursor: pointer; color: #007bff; text-decoration: underline; }
+.tooltip .tooltiptext { visibility: hidden; width: 450px; background-color: #555; color: #fff; text-align: left; border-radius: 6px; padding: 10px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -225px; opacity: 0; transition: opacity 0.3s;}
+.tooltip:hover .tooltiptext { visibility: visible; opacity: 1;}
+.chart-container { width: 100%; margin: 30px 0; }
+</style>
+</head>
+<body>
+
+<h1>Ultimate AI MLB Picks Dashboard</h1>
+<p style="text-align:center;">Updated daily at 9 AM EST with accurate pitcher matchups and advanced metrics</p>
+
+<table id="picks-table">
+<thead>
+<tr>
+    <th>Matchup</th>
+    <th>Pick</th>
+    <th>Edge %</th>
+    <th>Reason / Stats</th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+
+<div class="chart-container">
+<canvas id="edgeChart"></canvas>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.min.js"></script>
+<script>
+async function loadPicks() {
+    try {
+        const response = await fetch('picks_today.json');
+        const data = await response.json();
+        const tbody = document.querySelector('#picks-table tbody');
+        tbody.innerHTML = '';
+
+        let chartLabels = [];
+        let chartData = [];
+
+        data.games.forEach(game => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${game.matchup}<br><em>${game.pitcher_matchup}</em></td>
+                <td>${game.pick}</td>
+                <td>${(game.edge*100).toFixed(1)}%</td>
+                <td>
+                    <div class="tooltip">View Details
+                        <span class="tooltiptext">
+                        <strong>Reason:</strong> ${game.reason}<br>
+                        <strong>Team Stats:</strong> ${game.team_stats}<br>
+                        <strong>Player Stats:</strong> ${game.player_stats}<br>
+                        <strong>Odds:</strong> ${game.odds}
+                        </span>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+
+            chartLabels.push(game.matchup);
+            chartData.push((game.edge*100).toFixed(1));
+        });
+
+        const ctx = document.getElementById('edgeChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Edge %',
+                    data: chartData,
+                    backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true, max: 50 } }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error loading picks:', error);
+        document.querySelector('#picks-table tbody').innerHTML = '<tr><td colspan="4">Error loading picks</td></tr>';
+    }
+}
+loadPicks();
+</script>
+</body>
+</html>
