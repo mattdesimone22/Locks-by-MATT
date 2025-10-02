@@ -1,393 +1,1018 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI MLB Picks Dashboard</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI MLB Picks — Ultimate Dashboard</title>
+
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+  <!-- Lucide icons for sidebar (optional) -->
+  <script src="https://unpkg.com/lucide@0.260.0/dist/lucide.js"></script>
+
+  <!--
+    Inline CSS: black / deep-blue / gold colorway
+    - dark background, deep blue panels, gold accents
+  -->
   <style>
-    /* Inline CSS just for homepage extras */
+    :root{
+      --bg:#05060a;        /* page background */
+      --panel:#07102a;     /* cards / panels */
+      --panel-2:#0b2038;   /* lighter panel */
+      --accent:#ffd166;    /* gold */
+      --accent-2:#00b4d8;  /* cyan-blue */
+      --muted:#9fb3c8;
+      --glass: rgba(255,255,255,0.03);
+      --glass-2: rgba(255,255,255,0.02);
+      --radius:12px;
+      --shadow: 0 8px 30px rgba(2,6,23,0.7);
+      --glass-border: 1px solid rgba(255,255,255,0.03);
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    html,body { height:100%; margin:0; background: linear-gradient(180deg,var(--bg), #031021); color:#e6f0f6; -webkit-font-smoothing:antialiased; }
+
+    /* ---------- Layout ---------- */
+    .app {
+      display:flex;
+      min-height:100vh;
+      width:100%;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width:280px;
+      min-width:70px; /* collapsed width */
+      background: linear-gradient(180deg,var(--panel), #04122a);
+      border-right: 1px solid rgba(255,255,255,0.02);
+      padding:18px;
+      box-sizing:border-box;
+      transition: width 280ms cubic-bezier(.2,.9,.2,1), box-shadow 280ms;
+      position:fixed;
+      left:0; top:0; bottom:0;
+      z-index:999;
+      box-shadow: var(--shadow);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .sidebar.collapsed{ width:76px; }
+
+    .sb-brand {
+      display:flex; align-items:center; gap:12px;
+      padding:6px 2px;
+    }
+    .sb-logo {
+      width:48px; height:48px; border-radius:10px;
+      background: linear-gradient(135deg, rgba(255,209,102,0.12), rgba(0,180,216,0.09));
+      display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--accent);
+      font-size:20px;
+      box-shadow: inset 0 -6px 20px rgba(0,0,0,0.5);
+    }
+    .sb-title { font-size:16px; color:var(--accent); font-weight:700; letter-spacing:0.2px; }
+    .sb-sub { color:var(--muted); font-size:12px; margin-top:-6px; }
+
+    .sb-toggle {
+      margin-left:auto; background:var(--accent); color:#03121b; width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:none;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    }
+
+    .nav {
+      margin-top:12px;
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .nav a {
+      display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; color:#d7eaf3; text-decoration:none;
+      transition: all 180ms ease;
+      font-weight:600; font-size:14px;
+    }
+    .nav a .ico { width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; color:var(--accent-2); }
+    .nav a:hover { transform: translateX(6px); color:var(--accent); background: linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.015)); }
+    .nav a.active { background: linear-gradient(90deg, rgba(255,209,102,0.06), rgba(0,180,216,0.03)); color:var(--accent); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.01); }
+
+    .sb-footer { margin-top:auto; font-size:12px; color:var(--muted); padding-top:8px; border-top:1px solid rgba(255,255,255,0.01); }
+    .sb-footer .small { display:block; color:var(--muted); margin:6px 0; }
+
+    /* ---------- Main content ---------- */
+    .main {
+      margin-left: 300px;
+      padding:28px;
+      transition: margin-left 280ms cubic-bezier(.2,.9,.2,1);
+      min-height:100vh;
+      box-sizing:border-box;
+    }
+    .sidebar.collapsed ~ .main { margin-left: 96px; }
+
+    /* Pages */
+    .page { display:none; animation: fadeIn 360ms ease both; }
+    .page.active { display:block; }
+
+    @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none;} }
+
+    /* Hero */
     .hero {
-      background: url("https://images.unsplash.com/photo-1506459225024-1428097a7e18") no-repeat center center/cover;
-      height: 350px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      text-shadow: 2px 2px 5px black;
+      height:320px;
+      border-radius:14px;
+      overflow:hidden;
+      position:relative;
+      background: linear-gradient(180deg, rgba(2,6,23,0.25), rgba(2,6,23,0.6));
+      box-shadow: var(--shadow);
+      display:flex; align-items:center; justify-content:space-between; padding:24px;
+      background-image: url('https://images.unsplash.com/photo-1541807084-5c52b6b9d35b?auto=format&fit=crop&w=1600&q=60');
+      background-size:cover; background-position:center;
     }
-    .hero h1 {
-      font-size: 3em;
+    .hero .hero-left { max-width:65%; }
+    .hero h1 { margin:0; font-size:34px; color: #fff; text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
+    .hero p { color: var(--muted); margin-top:8px; font-size:15px; }
+
+    .hero .cta {
+      margin-top:18px;
+      display:flex; gap:12px;
     }
-    .ticker {
-      background: #111;
-      color: #00ffcc;
-      padding: 10px;
-      overflow: hidden;
-      white-space: nowrap;
+    .btn { background:var(--accent); color:#04121a; padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
+    .btn.secondary { background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.04); }
+
+    /* ticker */
+    .ticker { margin-top:14px; background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); padding:8px 14px; border-radius:10px; overflow:hidden; display:flex; align-items:center; gap:12px; }
+    .ticker .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); display:inline-block; }
+    .ticker .scroll { white-space:nowrap; overflow:hidden; flex:1; color:var(--muted); }
+    .scroll p { display:inline-block; padding-right:40%; animation: marquee 18s linear infinite; }
+    @keyframes marquee { 0% { transform: translateX(0%);} 100% { transform: translateX(-60%);} }
+
+    /* grid */
+    .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); margin-top:18px; align-items:start; }
+
+    /* cards */
+    .card {
+      background: linear-gradient(180deg, var(--panel-2), rgba(6,20,34,0.06));
+      border-radius:12px; padding:14px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); border: var(--glass-border);
     }
-    .ticker span {
-      display: inline-block;
-      padding-left: 100%;
-      animation: ticker 20s linear infinite;
-    }
-    @keyframes ticker {
-      0% { transform: translateX(0%); }
-      100% { transform: translateX(-100%); }
-    }
-    .highlight-section {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      margin-top: 20px;
-    }
-    .highlight-card {
-      background: #2a2a40;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-    .highlight-card h3 {
-      color: #00ffcc;
-    }
-    .spotlight {
-      margin-top: 30px;
-      background: #1a1a2d;
-      padding: 20px;
-      border-radius: 12px;
-    }
-    .spotlight h2 {
-      text-align: center;
-      color: #ffcc00;
-    }
-    .spotlight-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 15px;
-    }
-    .spot-card {
-      background: #222;
-      padding: 15px;
-      border-radius: 8px;
-    }
-    footer {
-      margin-top: 40px;
-      padding: 20px;
-      background: #111;
-      color: #999;
-      text-align: center;
-    }
-    footer a {
-      color: #00ffcc;
-      margin: 0 10px;
-      text-decoration: none;
+    .card h3 { margin:0 0 8px 0; color:var(--accent); font-size:16px; }
+    .muted { color:var(--muted); font-size:13px; }
+
+    /* games table */
+    .games-table { width:100%; border-collapse:collapse; }
+    .games-table th, .games-table td { padding:10px 8px; border-bottom:1px solid rgba(255,255,255,0.02); text-align:left; font-size:14px; color:#e8f4fb; }
+    .games-table th { color:var(--muted); font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.8px; }
+
+    /* props grid */
+    .props-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-top:10px; }
+    .prop { padding:12px; border-radius:10px; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.02); }
+    .prop h4 { margin:0; color:var(--accent); font-size:15px; }
+    .prop .why { color:var(--muted); margin-top:8px; font-size:13px; }
+
+    /* stats radar */
+    .radar-wrap { display:flex; gap:12px; align-items:center; }
+
+    /* small utility */
+    .flex { display:flex; gap:12px; align-items:center; }
+    .right { margin-left:auto; }
+
+    /* footer */
+    footer { margin-top:28px; color:var(--muted); font-size:13px; text-align:center; }
+
+    /* responsive */
+    @media (max-width:960px){
+      .sidebar{ position:relative; width:100%; height:auto; display:flex; flex-direction:row; padding:8px; gap:6px; }
+      .sidebar.collapsed ~ .main{ margin-left:0; }
+      .main{ margin-left:0; padding:12px; }
+      .hero { flex-direction:column; height:auto; padding:18px; }
     }
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <h2>⚾ AI MLB Picks</h2>
-    <ul>
-      <li><a href="#" onclick="showPage('home')">Home</a></li>
-      <li><a href="#" onclick="showPage('games')">Today's Games</a></li>
-      <li><a href="#" onclick="showPage('teamEdge')">Team Edge</a></li>
-      <li><a href="#" onclick="showPage('playerProps')">Player Props</a></li>
-      <li><a href="#" onclick="showPage('advancedStats')">Advanced Stats</a></li>
-      <li><a href="#" onclick="showPage('oddsTracker')">Odds Tracker</a></li>
-    </ul>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sb-brand">
+        <div class="sb-logo">AI</div>
+        <div>
+          <div class="sb-title">AI MLB Picks</div>
+          <div class="sb-sub">Daily picks • 9AM EST</div>
+        </div>
+        <button class="sb-toggle" id="toggleSidebar" title="Collapse menu">≡</button>
+      </div>
+
+      <nav class="nav" id="navMenu">
+        <a href="#" data-target="home" class="active"><span class="ico" data-icon="home"></span><span class="label">Home</span></a>
+        <a href="#" data-target="games"><span class="ico" data-icon="calendar"></span><span class="label">Today's Games</span></a>
+        <a href="#" data-target="teamEdge"><span class="ico" data-icon="bar-chart-2"></span><span class="label">Team Edge</span></a>
+        <a href="#" data-target="playerProps"><span class="ico" data-icon="user-check"></span><span class="label">Player Props</span></a>
+        <a href="#" data-target="advancedStats"><span class="ico" data-icon="pie-chart"></span><span class="label">Advanced Stats</span></a>
+        <a href="#" data-target="oddsTracker"><span class="ico" data-icon="trending-up"></span><span class="label">Odds Tracker</span></a>
+        <a href="#" data-target="settings"><span class="ico" data-icon="settings"></span><span class="label">Settings</span></a>
+      </nav>
+
+      <div class="sb-footer">
+        <div class="small">Status: <span id="statusIndicator">Ready</span></div>
+        <div class="small">Local Mode: <span id="localModeLabel">ON</span></div>
+        <div style="height:8px"></div>
+        <div class="small">Built with FanGraphs • BaseballSavant • Odds APIs</div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main">
+      <!-- HERO -->
+      <section id="home" class="page active">
+        <div class="hero card">
+          <div class="hero-left">
+            <h1>AI MLB Picks — Daily Edge & Props</h1>
+            <p class="muted">Your advanced analytics engine for MLB picks, player props, and market value — updated each morning at 9 AM EST (or live if your backend runs continuously).</p>
+            <div style="display:flex; gap:12px; margin-top:14px">
+              <button class="btn" id="refreshAllBtn">Refresh Data</button>
+              <button class="btn secondary" id="runNowBtn">Generate Picks Now</button>
+            </div>
+
+            <div class="ticker" style="margin-top:14px;">
+              <div class="dot"></div>
+              <div class="scroll"><p id="tickerText">Loading latest MLB news and model insights…</p></div>
+              <div class="right muted" id="lastUpdatedSmall">Last: —</div>
+            </div>
+          </div>
+
+          <div class="hero-right" style="width:36%; min-width:280px; text-align:right;">
+            <div style="background:rgba(0,0,0,0.25); padding:14px; border-radius:10px;">
+              <div style="color:var(--accent); font-weight:800; font-size:20px">Top Pick</div>
+              <div style="font-size:16px; margin-top:6px">Dodgers • Moneyline</div>
+              <div class="muted" style="margin-top:8px">Edge: <strong style="color:var(--accent)">+15.2%</strong></div>
+              <div style="margin-top:12px"><small class="muted">Why: Strong bullpen xFIP, favorable park factor, positive line movement.</small></div>
+            </div>
+            <div style="height:18px"></div>
+            <div style="background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); padding:12px; border-radius:10px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:56px;height:56px;border-radius:8px;background:linear-gradient(180deg,#052033,#06263c);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);">JD</div>
+                <div>
+                  <div style="font-weight:700">Player Spotlight: Aaron Judge</div>
+                  <div class="muted" style="font-size:13px">xwOBA vs RHP: .430 • Barrel%: 13% • Recent: 4-for-12 (2 HR)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick panels -->
+        <div class="grid" style="margin-top:18px">
+          <div class="card">
+            <h3>Today's Schedule Snapshot</h3>
+            <div id="miniGames">Loading schedule…</div>
+          </div>
+
+          <div class="card">
+            <h3>Value Props</h3>
+            <div id="miniProps" class="muted">Loading model props…</div>
+          </div>
+
+          <div class="card">
+            <h3>Market Movements</h3>
+            <div id="miniOdds" class="muted">Loading live odds…</div>
+          </div>
+        </div>
+
+        <!-- Quick Edge Chart -->
+        <div class="card" style="margin-top:18px">
+          <h3>AI Edge Snapshot</h3>
+          <canvas id="quickEdge" height="120"></canvas>
+        </div>
+      </section>
+
+      <!-- GAMES PAGE -->
+      <section id="games" class="page">
+        <div class="card">
+          <h3>Today's Games & Probable Pitchers</h3>
+          <table class="games-table">
+            <thead>
+              <tr><th>Time</th><th>Away</th><th>Home</th><th>Probable</th><th>Edge</th></tr>
+            </thead>
+            <tbody id="gamesTableBody">
+              <tr><td colspan="5" class="muted">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid" style="margin-top:18px">
+          <div class="card">
+            <h3>Game Details</h3>
+            <div id="gameDetails">Select a game to see matchup analytics and breakdowns.</div>
+          </div>
+          <div class="card">
+            <h3>Line Movement</h3>
+            <div id="lineMovement">Loading movement data…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TEAM EDGE -->
+      <section id="teamEdge" class="page">
+        <div class="card">
+          <h3>Team Edge Ratings</h3>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <div style="flex:1"><canvas id="edgeChart" height="140"></canvas></div>
+            <div style="width:320px">
+              <h4 style="margin:0;color:var(--accent)">Top Factors</h4>
+              <ul id="edgeFactors" class="muted" style="margin-top:8px"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <h3>Edge Explanation</h3>
+          <div id="edgeExplain" class="muted">Click a bar in the chart to see explanations for that matchup.</div>
+        </div>
+      </section>
+
+      <!-- PLAYER PROPS -->
+      <section id="playerProps" class="page">
+        <div class="card">
+          <h3>Player Props — Projections & Justifications</h3>
+          <div style="margin-top:10px; display:flex; gap:12px; align-items:center;">
+            <div style="flex:1">
+              <input id="propSearch" placeholder="Search player or team…" style="width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); background:transparent; color:#e6f0f6" />
+            </div>
+            <div>
+              <select id="propFilter" style="padding:8px; border-radius:8px; background:transparent; color:#e6f0f6; border:1px solid rgba(255,255,255,0.03)">
+                <option value="all">All</option><option value="hr">HR</option><option value="tb">Total Bases</option><option value="hits">Hits</option><option value="rbis">RBIs</option><option value="sb">Steals</option><option value="ks">Strikeouts</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="propsGrid" class="props-grid" style="margin-top:12px">
+            <!-- prop cards rendered here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ADVANCED STATS -->
+      <section id="advancedStats" class="page">
+        <div class="card">
+          <h3>Advanced Stats Comparator</h3>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <select id="advTeamA" style="padding:8px;border-radius:8px;background:transparent;color:#e6f0f6;border:1px solid rgba(255,255,255,0.03)"></select>
+            <select id="advTeamB" style="padding:8px;border-radius:8px;background:transparent;color:#e6f0f6;border:1px solid rgba(255,255,255,0.03)"></select>
+            <button class="btn" id="advCompareBtn">Compare</button>
+          </div>
+          <div class="radar-wrap" style="margin-top:14px">
+            <canvas id="advRadar" height="260" style="flex:1"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ODDS TRACKER -->
+      <section id="oddsTracker" class="page">
+        <div class="card">
+          <h3>Odds Snapshot & Movement</h3>
+          <div id="oddsCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:12px">
+            <!-- odds cards -->
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="settings" class="page">
+        <div class="card">
+          <h3>Settings & Data Mode</h3>
+          <p class="muted">Choose how the dashboard fetches data. <strong>Local Mode</strong> uses sample data included in the page. <strong>API Mode</strong> fetches data from your backend at <code>API_BASE</code>.</p>
+          <div style="display:flex;gap:12px;align-items:center;margin-top:12px">
+            <label style="display:flex;gap:8px;align-items:center"><input type="radio" name="dataMode" value="local" checked> Local (sample)</label>
+            <label style="display:flex;gap:8px;align-items:center"><input type="radio" name="dataMode" value="api"> API (use backend)</label>
+          </div>
+          <div style="margin-top:12px">
+            <label class="muted">API Base URL</label>
+            <input id="apiBase" placeholder="https://your-backend.com" style="width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); background:transparent; color:#e6f0f6" />
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div style="display:flex;justify-content:center;gap:16px">
+          <small>Data sources: FanGraphs • Baseball Savant • ESPN • Odds APIs</small>
+        </div>
+      </footer>
+    </main>
   </div>
 
-  <div class="main">
-    <!-- Hero Section -->
-    <section class="hero">
-      <h1>AI-Powered MLB Picks Dashboard</h1>
-    </section>
+  <!-- ---------- JavaScript: app logic (large) ---------- -->
+  <script>
+  /*****************************************************************************
+   * AI MLB Picks — Single File Frontend
+   * - Put this file as index.html
+   * - Page supports two modes:
+   *    - Local mode (sample data embedded in code) so it works instantly
+   *    - API mode (fetches from backend endpoints)
+   *
+   * Endpoints the app will call when API mode:
+   *  - GET {API_BASE}/api/scoreboard        -> ESPN scoreboard JSON
+   *  - GET {API_BASE}/api/team_stats        -> aggregated team/pitcher advanced metrics for today's games
+   *  - GET {API_BASE}/api/picks_props       -> model picks + player props array
+   *  - GET {API_BASE}/api/odds              -> odds array
+   *  - GET {API_BASE}/api/ticker            -> array of small headlines
+   *
+   * If you don't have a backend yet, the app will display local fallback data.
+   *****************************************************************************/
 
-    <!-- Live News Ticker -->
-    <div class="ticker">
-      <span>Breaking: Yankees lineup confirmed 🔥 | Dodgers pitcher scratched ❗ | Mets odds moved from -120 to -135 📈 | AI model gives Braves 68% win edge today 🧠</span>
-    </div>
+  (function(){
+    // ---------------- configuration ----------------
+    let API_BASE = ""; // empty -> same origin, fill in settings or server URL
+    const DEFAULT_USE_LOCAL = true; // starts in local/sample mode
+    let useLocal = DEFAULT_USE_LOCAL;
 
-    <!-- Home Page -->
-    <section id="home" class="page">
-      <h1>Welcome to AI MLB Picks</h1>
-      <p>This dashboard uses <strong>machine learning + advanced baseball analytics</strong> to generate daily picks with full explanations.</p>
-      <p><strong>Daily Refresh at 9 AM EST</strong></p>
-      <hr>
+    // Page elements
+    const sidebar = document.getElementById('sidebar');
+    const toggleSidebarBtn = document.getElementById('toggleSidebar');
+    const navLinks = document.querySelectorAll('.nav a[data-target]');
+    const pages = document.querySelectorAll('.page');
 
-      <!-- Daily Highlights -->
-      <h2>🔥 Today's Top Picks</h2>
-      <div class="highlight-section">
-        <div class="highlight-card">
-          <h3>Dodgers - Moneyline</h3>
-          <p><strong>Edge:</strong> +15% vs Padres</p>
-          <p><strong>Reason:</strong> Dodgers bullpen SIERA advantage + higher wRC+ vs RHP</p>
-        </div>
-        <div class="highlight-card">
-          <h3>Aaron Judge - HR Prop</h3>
-          <p><strong>Line:</strong> 0.5 HR (+220)</p>
-          <p><strong>Reason:</strong> 20% Barrel Rate vs LHP, wind blowing out 12mph</p>
-        </div>
-        <div class="highlight-card">
-          <h3>Max Scherzer - Strikeouts</h3>
-          <p><strong>Line:</strong> 7.5 K</p>
-          <p><strong>Reason:</strong> Faces team with 26% K% vs RHP</p>
-        </div>
-      </div>
+    // small UI items
+    const tickerText = document.getElementById('tickerText');
+    const lastUpdatedSmall = document.getElementById('lastUpdatedSmall');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const localModeLabel = document.getElementById('localModeLabel');
 
-      <!-- Player Spotlight -->
-      <div class="spotlight">
-        <h2>⭐ Player Spotlights</h2>
-        <div class="spotlight-grid">
-          <div class="spot-card">
-            <h3>Juan Soto</h3>
-            <p>Last 7 days: .412 AVG, 3 HR, 6 RBI</p>
-            <p>Edge: +25% vs RHP today</p>
-          </div>
-          <div class="spot-card">
-            <h3>Spencer Strider</h3>
-            <p>SIERA: 2.85 | K-BB%: 27%</p>
-            <p>Prop: 9.5 Ks vs Cubs lineup (high Whiff%)</p>
-          </div>
-          <div class="spot-card">
-            <h3>Julio Rodríguez</h3>
-            <p>Barrel%: 12% | HardHit%: 48%</p>
-            <p>Prop: Over 1.5 Total Bases looks sharp</p>
-          </div>
-        </div>
-      </div>
+    // charts placeholders
+    let quickEdgeChart = null;
+    let edgeChart = null;
+    let advRadarChart = null;
 
-      <!-- Chart Preview -->
-      <h2>📊 Quick Edge Chart Preview</h2>
-      <canvas id="quickEdgeChart" width="400" height="200"></canvas>
-
-      <script>
-        const ctx = document.getElementById("quickEdgeChart").getContext("2d");
-        new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: ["Dodgers", "Padres", "Yankees", "Red Sox"],
-            datasets: [{
-              label: "AI Edge %",
-              data: [65, 48, 60, 55],
-              backgroundColor: ["#00ffcc", "#ff3366", "#3399ff", "#ffcc00"]
+    // Sample fallback data (keeps file self-contained)
+    const SAMPLE = {
+      ticker: [
+        "Yankees confirm lineup — Judge in, Stanton out.",
+        "Dodgers favored after late-inning bullpen swap.",
+        "Padres' starter scratched; bullpen expected to cover 4 innings.",
+        "AI model: Braves 68% to win today based on edge metrics."
+      ],
+      scoreboard: {
+        events: [
+          {
+            id: "game-1",
+            competitions: [{
+              date: new Date().toISOString(),
+              venue: { fullName: "Yankee Stadium" },
+              competitors: [
+                { homeAway:"away", team:{ displayName:"Tigers", shortDisplayName:"DET" }, probablePitcher: { fullName:"Jack Flaherty" } },
+                { homeAway:"home", team:{ displayName:"Guardians", shortDisplayName:"CLE" }, probablePitcher: { fullName:"Slade Cecconi" } }
+              ]
             }]
           },
-          options: {
-            plugins: {
-              title: { display: true, text: "Team Edge Preview (AI Model)" }
-            }
+          {
+            id: "game-2",
+            competitions: [{
+              date: new Date().toISOString(),
+              venue: { fullName: "Wrigley Field" },
+              competitors: [
+                { homeAway:"away", team:{ displayName:"Padres", shortDisplayName:"SD" }, probablePitcher: { fullName:"Yu Darvish" } },
+                { homeAway:"home", team:{ displayName:"Cubs", shortDisplayName:"CHC" }, probablePitcher: { fullName:"Jameson Taillon" } }
+              ]
+            }]
+          },
+          {
+            id: "game-3",
+            competitions: [{
+              date: new Date().toISOString(),
+              venue: { fullName: "Yankee Stadium" },
+              competitors: [
+                { homeAway:"away", team:{ displayName:"Red Sox", shortDisplayName:"BOS" }, probablePitcher: { fullName:"Connelly Early" } },
+                { homeAway:"home", team:{ displayName:"Yankees", shortDisplayName:"NYY" }, probablePitcher: { fullName:"Cam Schlittler" } }
+              ]
+            }]
           }
+        ]
+      },
+      team_stats: {
+        games: [
+          {
+            shortMatch: "DET @ CLE",
+            home: { shortName: "CLE", wRC_plus: 110, bullpen_xFIP: 3.10, park_factor: 1.02 },
+            away: { shortName: "DET", wRC_plus: 100, bullpen_xFIP: 3.80, park_factor: 0.97 },
+            homePitcher: { name: "Slade Cecconi", xFIP: 3.10, CSW: 0.32 },
+            awayPitcher: { name: "Jack Flaherty", xFIP: 3.80, CSW: 0.285 },
+            odds: { home_ml: -135, away_ml: 115 },
+            reason: "CLE has better bullpen xFIP and slightly higher wRC+ vs LHP."
+          },
+          {
+            shortMatch: "SD @ CHC",
+            home: { shortName: "CHC", wRC_plus: 105, bullpen_xFIP: 3.50, park_factor: 0.98 },
+            away: { shortName: "SD", wRC_plus: 100, bullpen_xFIP: 3.70, park_factor: 1.01 },
+            homePitcher: { name: "Jameson Taillon", xFIP: 3.50, CSW: 0.295 },
+            awayPitcher: { name: "Yu Darvish", xFIP: 3.5, CSW: 0.30 },
+            odds: { home_ml: -115, away_ml: 105 },
+            reason: "CHC's Taillon has marginally better CSW vs this lineup."
+          },
+          {
+            shortMatch: "BOS @ NYY",
+            home: { shortName: "NYY", wRC_plus: 118, bullpen_xFIP: 3.20, park_factor: 1.05 },
+            away: { shortName: "BOS", wRC_plus: 108, bullpen_xFIP: 3.50, park_factor: 1.10 },
+            homePitcher: { name: "Cam Schlittler", xFIP: 3.20, CSW: 0.31 },
+            awayPitcher: { name: "Connelly Early", xFIP: 3.70, CSW: 0.27 },
+            odds: { home_ml: -160, away_ml: 140 },
+            reason: "Yankees advantage in lineup vs expected BABIP and stronger starter CSW."
+          }
+        ]
+      },
+      picks_props: {
+        picks: [
+          { matchup:"DET @ CLE", pick:"CLE ML", edge:0.15, probability:0.575, reason:"Cecconi xFIP + bullpen advantage" },
+          { matchup:"SD @ CHC", pick:"CHC ML", edge:0.12, probability:0.56, reason:"Taillon CSW vs Padres lineup" },
+          { matchup:"BOS @ NYY", pick:"NYY ML", edge:0.18, probability:0.59, reason:"Schlittler strong CSW; Yankees wRC+" }
+        ],
+        props: [
+          { player:"Aaron Judge", team:"NYY", prop_name:"Anytime HR", line:"0.5", model_ev:0.22, confidence:0.68, justification:"High Barrel% vs RHP, ballpark homer factor" },
+          { player:"Mookie Betts", team:"LAD", prop_name:"Total Bases O/U", line:"1.5", model_ev:0.63, confidence:0.55, justification:"Strong xwOBA vs this pitcher type" },
+          { player:"Gerrit Cole", team:"NYY", prop_name:"K's O/U", line:"7.5", model_ev:0.71, confidence:0.75, justification:"High CSW% and opponent K% trends" }
+        ]
+      },
+      odds: [
+        { home:"CLE", away:"DET", home_ml:-135, away_ml:115, total:9.5, source:"OddsAPI" },
+        { home:"CHC", away:"SD", home_ml:-115, away_ml:105, total:8.5, source:"OddsAPI" },
+        { home:"NYY", away:"BOS", home_ml:-160, away_ml:140, total:9.0, source:"OddsAPI" }
+      ]
+    };
+
+    // ---------------- Internal helpers ----------------
+    function el(sel) { return document.querySelector(sel); }
+    function els(sel) { return Array.from(document.querySelectorAll(sel)); }
+
+    function setStatus(s){ statusIndicator.innerText = s; }
+    function setLocalModeLabel(on){ localModeLabel.innerText = on ? "ON" : "API"; }
+
+    // ---------------- Navigation & sidebar behavior ----------------
+    function setupSidebar(){
+      // lucide icons
+      try{ lucide.createIcons(); } catch(e){}
+      // link clicks
+      navLinks.forEach(a=>{
+        a.addEventListener('click', (ev)=>{
+          ev.preventDefault();
+          navLinks.forEach(x=>x.classList.remove('active'));
+          a.classList.add('active');
+          const page = a.getAttribute('data-target');
+          showPage(page);
         });
-      </script>
-    </section>
+      });
 
-    <!-- Placeholder for other pages -->
-    <section id="games" class="page hidden"><h1>Today's Games</h1><div id="games-list"></div></section>
-    <section id="teamEdge" class="page hidden"><h1>Team Edge Ratings</h1><canvas id="teamEdgeChart"></canvas></section>
-    <section id="playerProps" class="page hidden"><h1>Player Props</h1><div id="player-props"></div></section>
-    <section id="advancedStats" class="page hidden"><h1>Advanced Stats</h1><canvas id="statsChart"></canvas></section>
-    <section id="oddsTracker" class="page hidden"><h1>Odds Tracker</h1><div id="odds-table"></div></section>
+      // collapse button
+      toggleSidebarBtn.addEventListener('click', ()=>{
+        sidebar.classList.toggle('collapsed');
+        // re-render charts to avoid canvas cropping
+        setTimeout(()=>{ redrawAllCharts(); }, 320);
+      });
 
-    <!-- Footer -->
-    <footer>
-      <p>Powered by AI + MLB Advanced Stats</p>
-      <p>Data Sources:
-        <a href="https://www.fangraphs.com" target="_blank">FanGraphs</a> |
-        <a href="https://baseballsavant.mlb.com/" target="_blank">Baseball Savant</a> |
-        <a href="https://www.vegasinsider.com/" target="_blank">Vegas Insider</a>
-      </p>
-    </footer>
-  </div>
+      // keyboard shortcut: 'c' to toggle collapse
+      window.addEventListener('keydown', (e)=>{ if(e.key === 'c'){ sidebar.classList.toggle('collapsed'); setTimeout(redrawAllCharts,320); }});
+    }
 
-  <script src="app.js"></script>
-  <script src="teamEdge.js"></script>
-  <script src="playerProps.js"></script>
-  <script src="advancedStats.js"></script>
-  <script src="oddsTracker.js"></script>
-</body>
-</html>
-<head>
-  <!-- existing head content -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <style>
-    /* Sidebar Styling */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 240px;
-      height: 100vh;
-      background: #1b1b2f;
-      color: white;
-      padding: 20px;
-      transition: width 0.3s ease;
-      overflow: hidden;
-      z-index: 1000;
+    function showPage(pageId){
+      pages.forEach(p=>p.classList.remove('active'));
+      const target = document.getElementById(pageId);
+      if(target) target.classList.add('active');
+      // lazily load data for that page
+      if(pageId === 'games') loadGamesPage();
+      if(pageId === 'teamEdge') TeamEdge.render();
+      if(pageId === 'playerProps') PlayerProps.render();
+      if(pageId === 'advancedStats') AdvancedStats.render();
+      if(pageId === 'oddsTracker') OddsTracker.render();
     }
-    .sidebar.collapsed {
-      width: 70px;
-    }
-    .sidebar h2 {
-      font-size: 1.5em;
-      margin-bottom: 20px;
-      transition: opacity 0.3s ease;
-    }
-    .sidebar.collapsed h2 {
-      opacity: 0;
-    }
-    .sidebar ul {
-      list-style: none;
-      padding: 0;
-    }
-    .sidebar ul li {
-      margin: 15px 0;
-    }
-    .sidebar ul li a {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: #ccc;
-      text-decoration: none;
-      font-size: 1.1em;
-      padding: 10px;
-      border-radius: 8px;
-      transition: all 0.3s ease;
-    }
-    .sidebar ul li a:hover {
-      background: #292945;
-      color: #00ffcc;
-      transform: translateX(5px);
-    }
-    .sidebar.collapsed ul li a span {
-      display: none;
-    }
-    .toggle-btn {
-      position: absolute;
-      top: 20px;
-      right: -15px;
-      background: #00ffcc;
-      color: #000;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    }
-    .main {
-      margin-left: 260px;
-      padding: 20px;
-      transition: margin-left 0.3s ease;
-    }
-    .sidebar.collapsed ~ .main {
-      margin-left: 90px;
-    }
-  </style>
-</head>
 
-<body>
-  <div class="sidebar" id="sidebar">
-    <h2>⚾ Picks</h2>
-    <div class="toggle-btn" id="toggleSidebar">☰</div>
-    <ul>
-      <li><a href="#" onclick="showPage('home')"><i data-lucide="home"></i><span>Home</span></a></li>
-      <li><a href="#" onclick="showPage('games')"><i data-lucide="calendar"></i><span>Today's Games</span></a></li>
-      <li><a href="#" onclick="showPage('teamEdge')"><i data-lucide="bar-chart"></i><span>Team Edge</span></a></li>
-      <li><a href="#" onclick="showPage('playerProps')"><i data-lucide="user"></i><span>Player Props</span></a></li>
-      <li><a href="#" onclick="showPage('advancedStats')"><i data-lucide="pie-chart"></i><span>Advanced Stats</span></a></li>
-      <li><a href="#" onclick="showPage('oddsTracker')"><i data-lucide="trending-up"></i><span>Odds Tracker</span></a></li>
-    </ul>
-  </div>
+    // ---------------- API wrapper (local fallback) ----------------
+    async function apiGet(path){
+      if(useLocal || !API_BASE){
+        // simulate network latency slightly for realism
+        await new Promise(r=>setTimeout(r, 160));
+        // return mapped sample data
+        if(path.includes('scoreboard')) return SAMPLE.scoreboard;
+        if(path.includes('team_stats')) return SAMPLE.team_stats;
+        if(path.includes('picks_props')) return SAMPLE.picks_props;
+        if(path.includes('odds')) return SAMPLE.odds;
+        if(path.includes('ticker')) return SAMPLE.ticker;
+        if(path.includes('team_list')){
+          // create team list
+          return { teams: SAMPLE.team_stats.games.map(g=>g.home.shortName) };
+        }
+        return {};
+      } else {
+        const url = (API_BASE.replace(/\/+$/,'') + '/' + path.replace(/^\/+/,''));
+        const res = await fetch(url, { cache: 'no-cache' });
+        if(!res.ok) throw new Error('API error ' + res.status);
+        return await res.json();
+      }
+    }
 
-  <div class="main">
-    <!-- existing homepage content -->
-  </div>
+    // ---------------- Page-level loaders ----------------
+    // HOME: quick summary + ticker + quick charts
+    async function loadHome(){
+      try{
+        setStatus('Loading home data');
+        const tickerArr = await apiGet('/api/ticker').catch(()=>SAMPLE.ticker);
+        tickerText.innerText = tickerArr.join('  •  ');
+        lastUpdatedSmall.innerText = "Last: " + new Date().toLocaleString();
+        setStatus('Ready');
+      } catch(e){
+        console.error('home load error', e);
+        setStatus('Error');
+      }
+    }
 
-  <script>
-    lucide.createIcons(); // Load Lucide icons
-    const sidebar = document.getElementById("sidebar");
-    const toggle = document.getElementById("toggleSidebar");
-    toggle.addEventListener("click", () => {
-      sidebar.classList.toggle("collapsed");
-    });
+    // GAMES page
+    async function loadGamesPage(){
+      try{
+        setStatus('Loading games');
+        const sb = await apiGet('/api/scoreboard').catch(()=>SAMPLE.scoreboard);
+        const tbody = document.getElementById('gamesTableBody');
+        tbody.innerHTML = '';
+        if(!sb.events || sb.events.length === 0){
+          tbody.innerHTML = '<tr><td colspan="5" class="muted">No games scheduled</td></tr>'; return;
+        }
+        // also fetch team_stats to get edge per game
+        const teamstats = await apiGet('/api/team_stats').catch(()=>SAMPLE.team_stats);
+        // map shortMatch -> stats
+        const mapStats = {};
+        if(teamstats.games) teamstats.games.forEach(g => { mapStats[g.shortMatch] = g; });
+
+        for(const ev of sb.events){
+          const comp = ev.competitions[0];
+          const start = new Date(comp.date).toLocaleString();
+          const away = comp.competitors.find(c=>c.homeAway==='away');
+          const home = comp.competitors.find(c=>c.homeAway==='home');
+          const short = `${away.team.shortDisplayName} @ ${home.team.shortDisplayName}`;
+          // match a teamstats game by checking either shortMatch or teams
+          const statMatch = Object.values(mapStats).find(g => (g.shortMatch && (short.includes(g.home.shortName) || short.includes(g.away.shortName))) ) || null;
+          const edgeText = statMatch ? `${Math.round((statMatch.home.wRC_plus - statMatch.away.wRC_plus)*1)} pts` : '—';
+          // prepare row
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${start}</td>
+            <td>${away.team.displayName} <div class="muted">${away.probablePitcher ? away.probablePitcher.fullName : 'TBD'}</div></td>
+            <td>${home.team.displayName} <div class="muted">${home.probablePitcher ? home.probablePitcher.fullName : 'TBD'}</div></td>
+            <td>${short}</td>
+            <td>${edgeText}</td>
+          `;
+          row.addEventListener('click', ()=> showGameDetails(short, statMatch || {}) );
+          tbody.appendChild(row);
+        }
+        setStatus('Ready');
+      } catch(e){
+        console.error('loadGames error', e);
+        setStatus('Error loading games');
+      }
+    }
+
+    function showGameDetails(short, statMatch){
+      const el = document.getElementById('gameDetails');
+      el.innerHTML = `
+        <h4 style="margin-top:0">${short}</h4>
+        <div class="muted">Model pick: <strong>${statMatch && statMatch.home ? (statMatch.home.shortName + ' favored') : '—'}</strong></div>
+        <div style="margin-top:10px"><strong>Why:</strong> ${statMatch.reason || 'No detailed stat available.'}</div>
+        <div style="margin-top:10px"><small class="muted">Home pitcher: ${statMatch.homePitcher ? statMatch.homePitcher.name + ' (xFIP ' + statMatch.homePitcher.xFIP + ')' : 'TBD'}</small></div>
+        <div style="margin-top:6px"><small class="muted">Away pitcher: ${statMatch.awayPitcher ? statMatch.awayPitcher.name + ' (xFIP ' + statMatch.awayPitcher.xFIP + ')' : 'TBD'}</small></div>
+      `;
+    }
+
+    // TEAM EDGE page
+    const TeamEdge = (function(){
+      let chart = null;
+      async function render(){
+        try{
+          setStatus('Loading team edges');
+          const data = await apiGet('/api/team_stats').catch(()=>SAMPLE.team_stats);
+          if(!data.games || data.games.length===0){
+            document.getElementById('edgeExplain').innerText = 'No edge data.';
+            setStatus('Ready'); return;
+          }
+          // compute simple edge metric (home prob) from xFIP/wRC/bullpen
+          const labels = [], vals = [], details = [];
+          data.games.forEach(g=>{
+            const homeP = g.homePitcher || {}; const awayP = g.awayPitcher || {};
+            const pitchDelta = (awayP.xFIP || 4.0) - (homeP.xFIP || 4.0);
+            const hitDelta = (g.home.wRC_plus || 100) - (g.away.wRC_plus || 100);
+            const bullpenDelta = (g.away.bullpen_xFIP || 4.0) - (g.home.bullpen_xFIP || 4.0);
+            let score = 0.45*pitchDelta + 0.3*(hitDelta/100) + 0.15*bullpenDelta;
+            const prob = 1/(1+Math.exp(-2.5*score));
+            const edgePct = Math.round((prob - 0.5) * 2000)/10; // in percent with 1dp
+            labels.push(g.shortMatch);
+            vals.push(Math.round(edgePct*10)/10);
+            details.push({ match:g.shortMatch, prob, reason: g.reason });
+          });
+
+          const ctx = document.getElementById('edgeChart').getContext('2d');
+          if(chart) chart.destroy();
+          chart = new Chart(ctx, {
+            type:'bar',
+            data: { labels, datasets: [{ label:'Edge % (positive = home)', data: vals, backgroundColor: vals.map(v=> v>8 ? 'rgba(255,209,102,0.95)' : 'rgba(0,180,216,0.85)') }] },
+            options: {
+              scales: { y: { beginAtZero:true } },
+              onClick: (evt, items) => {
+                if(items.length>0){
+                  const idx = items[0].index;
+                  const d = details[idx];
+                  document.getElementById('edgeExplain').innerHTML = `<strong>${d.match}</strong>: Model probability ${(d.prob*100).toFixed(1)}% — ${d.reason}`;
+                }
+              }
+            }
+          });
+
+          // list top factors (aggregate)
+          const fEl = document.getElementById('edgeFactors'); fEl.innerHTML = '';
+          const topFactors = ['xFIP vs Opp', 'wRC+ matchup', 'Bullpen xFIP', 'Park factor'];
+          topFactors.forEach(tf => {
+            const li = document.createElement('li'); li.className='muted'; li.innerText = tf; fEl.appendChild(li);
+          });
+
+          setStatus('Ready');
+        } catch(e){
+          console.error('TeamEdge error', e);
+          setStatus('Error team edges');
+        }
+      }
+      return { render };
+    })();
+
+    // PLAYER PROPS
+    const PlayerProps = (function(){
+      let propsCache = [];
+      async function render(){
+        try{
+          setStatus('Loading player props');
+          const data = await apiGet('/api/picks_props').catch(()=>SAMPLE.picks_props);
+          const props = data.props || data; // support multiple shapes
+          propsCache = props;
+          const grid = document.getElementById('propsGrid');
+          grid.innerHTML = '';
+          if(!props || props.length===0){ grid.innerHTML = '<div class="muted">No props today.</div>'; setStatus('Ready'); return; }
+
+          // sort by confidence or model_ev
+          props.sort((a,b)=> (b.confidence || b.model_ev || 0) - (a.confidence || a.model_ev || 0));
+
+          props.forEach(p=>{
+            const card = document.createElement('div'); card.className='prop';
+            const conf = (p.confidence || p.model_ev || 0);
+            const confPct = Math.round(conf*100);
+            card.innerHTML = `<h4>${p.player} <span style="font-weight:600;color:var(--muted);">(${p.team || ''})</span></h4>
+              <div class="muted">${p.prop_name || p.prop} • line: ${p.line || p.line}</div>
+              <div style="margin-top:8px;font-size:14px">Model EV: <strong style="color:var(--accent)">${((p.model_ev||0)*100).toFixed(1)}%</strong> • Confidence: <strong>${confPct}%</strong></div>
+              <div class="why">${p.justification || p.reason || p.rule || ''}</div>
+            `;
+            grid.appendChild(card);
+          });
+
+          setStatus('Ready');
+        } catch(e){
+          console.error('PlayerProps error', e);
+          setStatus('Error props');
+        }
+      }
+
+      // filter / search
+      document.getElementById('propSearch').addEventListener('input', (e)=>{
+        const q = e.target.value.trim().toLowerCase();
+        const filtered = propsCache.filter(p => (p.player||'').toLowerCase().includes(q) || (p.team||'').toLowerCase().includes(q) || (p.prop_name||'').toLowerCase().includes(q));
+        const grid = document.getElementById('propsGrid'); grid.innerHTML = '';
+        filtered.forEach(p=>{
+          const card = document.createElement('div'); card.className='prop';
+          const conf = (p.confidence || p.model_ev || 0); const confPct = Math.round(conf*100);
+          card.innerHTML = `<h4>${p.player} <small style="color:var(--muted)">${p.team||''}</small></h4>
+            <div class="muted">${p.prop_name || p.prop} • ${p.line || ''}</div>
+            <div style="margin-top:6px;font-size:13px">EV ${(p.model_ev||0)*100}% • Confidence ${confPct}%</div>
+            <div class="why">${p.justification || p.reason || ''}</div>`;
+          grid.appendChild(card);
+        });
+      });
+
+      document.getElementById('propFilter').addEventListener('change', (e)=>{
+        const v = e.target.value;
+        const filtered = propsCache.filter(p => v==='all' ? true : ((p.prop_name||p.prop||'').toLowerCase().includes(v)));
+        const grid = document.getElementById('propsGrid'); grid.innerHTML='';
+        filtered.forEach(p=>{
+          const card = document.createElement('div'); card.className='prop';
+          const conf = (p.confidence || p.model_ev || 0); const confPct = Math.round(conf*100);
+          card.innerHTML = `<h4>${p.player} <small style="color:var(--muted)">${p.team||''}</small></h4>
+            <div class="muted">${p.prop_name || p.prop} • ${p.line || ''}</div>
+            <div style="margin-top:6px;font-size:13px">EV ${(p.model_ev||0)*100}% • Confidence ${confPct}%</div>
+            <div class="why">${p.justification || p.reason || ''}</div>`;
+          grid.appendChild(card);
+        });
+      });
+
+      return { render };
+    })();
+
+    // ADVANCED STATS
+    const AdvancedStats = (function(){
+      let teams = [];
+      async function loadTeams(){
+        const tl = await apiGet('/api/team_list').catch(()=> ({ teams: SAMPLE.team_stats.games.map(g=>g.home.shortName) }) );
+        teams = tl.teams || [];
+        const a = document.getElementById('advTeamA'), b = document.getElementById('advTeamB');
+        a.innerHTML = ''; b.innerHTML='';
+        teams.forEach(t => { a.add(new Option(t,t)); b.add(new Option(t,t)); });
+        if(teams.length>=2){ a.value = teams[0]; b.value = teams[1]; }
+      }
+
+      async function render(){
+        try{
+          setStatus('Loading advanced stats');
+          await loadTeams();
+          document.getElementById('advCompareBtn').addEventListener('click', async ()=>{
+            const a = document.getElementById('advTeamA').value;
+            const b = document.getElementById('advTeamB').value;
+            const comp = await apiGet(`/api/team_compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`).catch(()=>({
+              a: { wRC_plus: 110, xwOBA:0.334, hard_hit_pct: 42, kbb_pct: 15, siera:3.45 },
+              b: { wRC_plus: 98, xwOBA:0.312, hard_hit_pct: 36, kbb_pct: 12, siera:4.12 }
+            }));
+            // build radar
+            const labels = ['wRC+','xwOBA','HardHit%','K-BB%','SIERA'];
+            const dsA = [comp.a.wRC_plus || 100, comp.a.xwOBA || 0.320, comp.a.hard_hit_pct || 35, comp.a.kbb_pct || 12, comp.a.siera || 4.0];
+            const dsB = [comp.b.wRC_plus || 100, comp.b.xwOBA || 0.320, comp.b.hard_hit_pct || 35, comp.b.kbb_pct || 12, comp.b.siera || 4.0];
+            const ctx = document.getElementById('advRadar').getContext('2d');
+            if(advRadarChart) advRadarChart.destroy();
+            advRadarChart = new Chart(ctx, {
+              type:'radar',
+              data:{ labels, datasets:[
+                { label: a, data: dsA, backgroundColor:'rgba(255,209,102,0.18)', borderColor:'#ffd166' },
+                { label: b, data: dsB, backgroundColor:'rgba(0,180,216,0.12)', borderColor:'#00b4d8' }
+              ]},
+              options:{ responsive:true }
+            });
+            setStatus('Ready');
+          });
+          // initial trigger
+          document.getElementById('advCompareBtn').click();
+        } catch(e){
+          console.error('AdvancedStats error', e);
+          setStatus('Error advanced stats');
+        }
+      }
+      return { render };
+    })();
+
+    // ODDS TRACKER
+    const OddsTracker = (function(){
+      async function render(){
+        try{
+          setStatus('Loading odds');
+          const odds = await apiGet('/api/odds').catch(()=> SAMPLE.odds);
+          const container = document.getElementById('oddsCards'); container.innerHTML='';
+          odds.forEach(o=>{
+            const block = document.createElement('div'); block.className='card';
+            block.innerHTML = `<div style="display:flex;align-items:center;gap:12px">
+              <div style="width:56px;height:56px;border-radius:8px;background:linear-gradient(180deg,#021428,#05233a);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700">${o.home}</div>
+              <div>
+                <div style="font-weight:700">${o.home} vs ${o.away}</div>
+                <div class="muted">ML: ${o.home_ml} / ${o.away_ml} • Total: ${o.total}</div>
+                <div class="muted" style="margin-top:8px">Source: ${o.source}</div>
+              </div></div>`;
+            container.appendChild(block);
+          });
+          setStatus('Ready');
+        } catch(e){
+          console.error('OddsTracker error', e);
+          setStatus('Error odds');
+        }
+      }
+      return { render };
+    })();
+
+    // Quick homepage mini widgets
+    async function loadMiniWidgets(){
+      try{
+        setStatus('Loading mini widgets');
+        const sb = await apiGet('/api/scoreboard').catch(()=>SAMPLE.scoreboard);
+        // miniGames
+        const miniGames = document.getElementById('miniGames'); miniGames.innerHTML='';
+        sb.events.slice(0,4).forEach(ev=>{
+          const c = ev.competitions[0]; const away = c.competitors.find(x=>x.homeAway==='away'); const home = c.competitors.find(x=>x.homeAway==='home');
+          const d = document.createElement('div'); d.style.marginBottom='10px';
+          d.innerHTML = `<strong>${away.team.shortDisplayName}</strong> @ <strong>${home.team.shortDisplayName}</strong> • <span class="muted">${new Date(c.date).toLocaleTimeString()}</span>`;
+          miniGames.appendChild(d);
+        });
+
+        // mini props
+        const mp = document.getElementById('miniProps'); mp.innerHTML='';
+        const picks = await apiGet('/api/picks_props').catch(()=>SAMPLE.picks_props);
+        if(picks && picks.props && picks.props.length>0){
+          mp.innerHTML = picks.props.slice(0,3).map(p=>`<div style="margin-bottom:6px"><strong>${p.player}</strong> • ${p.prop_name || p.prop} — <span style="color:var(--accent)">${((p.model_ev||0)*100).toFixed(1)}%</span></div>`).join('');
+        } else mp.innerHTML = '<div class="muted">No props yet</div>';
+
+        // mini odds
+        const mo = document.getElementById('miniOdds');
+        const odds = await apiGet('/api/odds').catch(()=>SAMPLE.odds);
+        mo.innerHTML = odds.slice(0,3).map(o=>`${o.home} ${o.home_ml} / ${o.away} ${o.away_ml}`).join('<br>');
+        setStatus('Ready');
+      } catch(e){
+        console.error('mini widgets error', e);
+        setStatus('Error mini widgets');
+      }
+    }
+
+    // QUICK EDGE CHART
+    async function renderQuickEdge(){
+      try{
+        const data = await apiGet('/api/team_stats').catch(()=>SAMPLE.team_stats);
+        const labels = data.games.map(g=>g.shortMatch);
+        const vals = data.games.map(g=>{
+          const hp = g.homePitcher || {}; const ap = g.awayPitcher || {};
+          const pitchDelta = (ap.xFIP || 4.0) - (hp.xFIP || 4.0);
+          const hitDelta = (g.home.wRC_plus || 100) - (g.away.wRC_plus || 100);
+          const score = 0.45*pitchDelta + 0.3*(hitDelta/100) + 0.15*((g.away.bullpen_xFIP||4)-(g.home.bullpen_xFIP||4));
+          const prob = 1/(1+Math.exp(-2.5*score));
+          return Math.round((prob-0.5)*2000)/10;
+        });
+
+        const ctx = document.getElementById('quickEdge').getContext('2d');
+        if(quickEdgeChart) quickEdgeChart.destroy();
+        quickEdgeChart = new Chart(ctx, {
+          type:'bar',
+          data:{ labels, datasets:[{ label:'Edge % (home positive)', data: vals, backgroundColor: vals.map(v=> v>8 ? '#ffd166' : '#00b4d8') }]},
+          options:{ responsive:true, plugins:{ legend:{display:false} } }
+        });
+      } catch(e){
+        console.error('quickEdge error', e);
+      }
+    }
+
+    function redrawAllCharts(){
+      try{
+        if(quickEdgeChart) quickEdgeChart.resize();
+        if(edgeChart) edgeChart.resize();
+        if(advRadarChart) advRadarChart.resize();
+        if(advRadarChart) advRadarChart.update();
+      } catch(e){ /* ignore */ }
+    }
+
+    // global refresh that refreshes everything
+    async function refreshAll(){
+      try{
+        setStatus('Refreshing all data...');
+        await loadHome();
+        await loadMiniWidgets();
+        await renderQuickEdge();
+        // only render active page components
+        const active = document.querySelector('.page.active')?.id || 'home';
+        if(active === 'games') await loadGamesPage();
+        if(active === 'teamEdge') await TeamEdge.render();
+        if(active === 'playerProps') await PlayerProps.render();
+        if(active === 'advancedStats') await AdvancedStats.render();
+        if(active === 'oddsTracker') await OddsTracker.render();
+        setStatus('Ready');
+      } catch(e){
+        console.error('refreshAll error', e);
+        setStatus('Error refreshing');
+      }
+    }
+
+    // call backend generator to compute picks now (POST)
+    async function triggerGenerateNow(){
+      try{
+        setStatus('Generating picks now...');
+        if(useLocal || !API_BASE){
+          // simulate generation
+          await new Promise(r=>setTimeout(r,600));
+          alert('Local sample generation complete (local mode).');
+        } else {
+          const res = await fetch(API_BASE + '/api/generate_picks', { method: 'POST' });
+          if(!res.ok) throw new Error('generate failed ' + res.status);
+          const json = await res.json();
+          alert('Picks generated: ' + (json.date||'OK'));
+        }
+        await refreshAll();
+      } catch(e){
+        console.error('generateNow', e);
+        alert('Failed to generate picks: ' + e.message);
+        setStatus('Error generate');
+      }
+    }
+
+    // init wiring UI
+    function initUI(){
+      setupSidebar();
+      // navigation default show home
+      showPage('home');
+      // wire buttons
+      document.getElementById('refreshAllBtn').addEventListener('click', refreshAll);
+      document.getElementById('runNowBtn').addEventListener('click', triggerGenerateNow);
+      // wire settings
+      document.querySelectorAll('input[name="dataMode"]').forEach(r => r.addEventListener('change', e=>{
+        useLocal = (e.target.value === 'local');
+        setLocalModeLabel(useLocal);
+        const apiVal = document.getElementById('apiBase').value;
+        if(apiVal) API_BASE = apiVal;
+      }));
+      document.getElementById('apiBase').addEventListener('change', (e)=> { API_BASE = e.target.value.trim(); });
+      // initial loads
+      loadHome(); loadMiniWidgets(); renderQuickEdge();
+    }
+
+    // expose some for console debug
+    window.App = { refreshAll, triggerGenerateNow, apiGet };
+
+    // kick off
+    initUI();
+  })();
+
+  // small helper to redraw charts on window resize
+  window.addEventListener('resize', ()=> { setTimeout(()=>{ try{ window.dispatchEvent(new Event('resize')); }catch(e){} }, 200); });
+
+  // helper to redraw canvases when page visibility changes (fixes some mobile resizing issues)
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ /* redraw */ }});
   </script>
 </body>
-<script>
-async function loadData() {
-  // Load today's games
-  const games = await fetch("games_today.json").then(res => res.json());
-  const gamesTable = document.querySelector("#gamesTable tbody");
-  gamesTable.innerHTML = "";
-  games.forEach(g => {
-    gamesTable.innerHTML += `
-      <tr>
-        <td>${g.time}</td>
-        <td>${g.away}</td>
-        <td>${g.home}</td>
-        <td>${g.awayPitcher} vs. ${g.homePitcher}</td>
-        <td>${g.edge}%</td>
-      </tr>`;
-  });
-
-  // Load team edge ratings
-  const edges = await fetch("team_edge.json").then(res => res.json());
-  const chartData = edges.map(e => ({ team: e.team, edge: e.edge }));
-  renderEdgeChart(chartData);
-
-  // Load player props
-  const props = await fetch("player_props.json").then(res => res.json());
-  const propsGrid = document.querySelector("#playerPropsGrid");
-  propsGrid.innerHTML = "";
-  props.forEach(p => {
-    propsGrid.innerHTML += `
-      <div class="prop-card">
-        <h3>${p.player} (${p.team})</h3>
-        <p><strong>Matchup:</strong> vs ${p.opponentPitcher}</p>
-        <p><strong>Prop:</strong> ${p.market} (${p.line})</p>
-        <p><strong>Edge:</strong> ${p.edgeReasoning}</p>
-      </div>`;
-  });
-
-  // Load odds tracker
-  const odds = await fetch("odds.json").then(res => res.json());
-  const oddsTable = document.querySelector("#oddsTable tbody");
-  oddsTable.innerHTML = "";
-  odds.forEach(o => {
-    oddsTable.innerHTML += `
-      <tr>
-        <td>${o.matchup}</td>
-        <td>${o.opening}</td>
-        <td>${o.current}</td>
-        <td>${o.movement}</td>
-      </tr>`;
-  });
-
-  // Load ticker
-  const ticker = await fetch("ticker.json").then(res => res.json());
-  document.getElementById("liveTicker").innerText = ticker.join("  •  ");
-}
-
-// Render chart with Chart.js
-function renderEdgeChart(data) {
-  const ctx = document.getElementById("teamEdgeChart").getContext("2d");
-  new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: data.map(d => d.team),
-      datasets: [{
-        label: "Edge %",
-        data: data.map(d => d.edge),
-        backgroundColor: "#00ffcc"
-      }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } } }
-  });
-}
-
-// Auto load on page start
-loadData();
-</script>
+</html>
