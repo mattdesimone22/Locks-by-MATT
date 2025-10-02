@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI MLB Picks — Advanced Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.min.css"/>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:18px;background:#f7fafc;color:#0b1220}
+    header{display:flex;justify-content:space-between;align-items:center}
+    h1{margin:0;font-size:24px}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px;margin-top:18px}
+    .card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 8px 24px rgba(11,17,34,0.04)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #eef2f7;text-align:left}
+    th{background:#f1f5f9}
+    .small{font-size:12px;color:#667}
+    .badge{display:inline-block;padding:4px 8px;background:#e6f7ff;border-radius:999px;color:#0066cc}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>AI MLB Picks — Advanced</h1>
+      <div class="small">Daily updates at 9:00 AM EST • Data: FanGraphs / Baseball Savant / Odds Providers</div>
+    </div>
+    <div>
+      <span class="badge" id="lastUpdated">—</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card" id="picksCard">
+      <h2>Today's Picks</h2>
+      <table id="picksTable">
+        <thead><tr><th>Matchup</th><th>Pick</th><th>Edge</th><th>Details</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Edge Distribution</h3>
+      <canvas id="edgeChart" width="400" height="300"></canvas>
+      <div style="margin-top:10px" id="explain"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.min.js"></script>
+  <script src="dashboard_utils.js"></script>
+  <script src="charts.js"></script>
+
+  <script>
+    async function init(){
+      await Dashboard.loadAndRender();
+    }
+    init();
+  </script>
+</body>
+</html>
