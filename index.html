@@ -1,105 +1,318 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ultimate AI MLB Picks Dashboard</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.min.css"/>
-<style>
-body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
-h1 { text-align: center; color: #222; }
-table { width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);}
-th, td { border: 1px solid #ddd; padding: 10px; text-align: left;}
-th { background-color: #007bff; color: white; }
-tr:nth-child(even) { background-color: #f9f9f9; }
-.tooltip { position: relative; display: inline-block; cursor: pointer; color: #007bff; text-decoration: underline; }
-.tooltip .tooltiptext { visibility: hidden; width: 450px; background-color: #555; color: #fff; text-align: left; border-radius: 6px; padding: 10px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -225px; opacity: 0; transition: opacity 0.3s;}
-.tooltip:hover .tooltiptext { visibility: visible; opacity: 1;}
-.chart-container { width: 100%; margin: 30px 0; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI MLB Picks Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Inline CSS just for homepage extras */
+    .hero {
+      background: url("https://images.unsplash.com/photo-1506459225024-1428097a7e18") no-repeat center center/cover;
+      height: 350px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      text-shadow: 2px 2px 5px black;
+    }
+    .hero h1 {
+      font-size: 3em;
+    }
+    .ticker {
+      background: #111;
+      color: #00ffcc;
+      padding: 10px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .ticker span {
+      display: inline-block;
+      padding-left: 100%;
+      animation: ticker 20s linear infinite;
+    }
+    @keyframes ticker {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-100%); }
+    }
+    .highlight-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .highlight-card {
+      background: #2a2a40;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .highlight-card h3 {
+      color: #00ffcc;
+    }
+    .spotlight {
+      margin-top: 30px;
+      background: #1a1a2d;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .spotlight h2 {
+      text-align: center;
+      color: #ffcc00;
+    }
+    .spotlight-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+    }
+    .spot-card {
+      background: #222;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    footer {
+      margin-top: 40px;
+      padding: 20px;
+      background: #111;
+      color: #999;
+      text-align: center;
+    }
+    footer a {
+      color: #00ffcc;
+      margin: 0 10px;
+      text-decoration: none;
+    }
+  </style>
 </head>
 <body>
+  <div class="sidebar">
+    <h2>⚾ AI MLB Picks</h2>
+    <ul>
+      <li><a href="#" onclick="showPage('home')">Home</a></li>
+      <li><a href="#" onclick="showPage('games')">Today's Games</a></li>
+      <li><a href="#" onclick="showPage('teamEdge')">Team Edge</a></li>
+      <li><a href="#" onclick="showPage('playerProps')">Player Props</a></li>
+      <li><a href="#" onclick="showPage('advancedStats')">Advanced Stats</a></li>
+      <li><a href="#" onclick="showPage('oddsTracker')">Odds Tracker</a></li>
+    </ul>
+  </div>
 
-<h1>Ultimate AI MLB Picks Dashboard</h1>
-<p style="text-align:center;">Updated daily at 9 AM EST with accurate pitcher matchups and advanced metrics</p>
+  <div class="main">
+    <!-- Hero Section -->
+    <section class="hero">
+      <h1>AI-Powered MLB Picks Dashboard</h1>
+    </section>
 
-<table id="picks-table">
-<thead>
-<tr>
-    <th>Matchup</th>
-    <th>Pick</th>
-    <th>Edge %</th>
-    <th>Reason / Stats</th>
-</tr>
-</thead>
-<tbody>
-</tbody>
-</table>
+    <!-- Live News Ticker -->
+    <div class="ticker">
+      <span>Breaking: Yankees lineup confirmed 🔥 | Dodgers pitcher scratched ❗ | Mets odds moved from -120 to -135 📈 | AI model gives Braves 68% win edge today 🧠</span>
+    </div>
 
-<div class="chart-container">
-<canvas id="edgeChart"></canvas>
-</div>
+    <!-- Home Page -->
+    <section id="home" class="page">
+      <h1>Welcome to AI MLB Picks</h1>
+      <p>This dashboard uses <strong>machine learning + advanced baseball analytics</strong> to generate daily picks with full explanations.</p>
+      <p><strong>Daily Refresh at 9 AM EST</strong></p>
+      <hr>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.min.js"></script>
-<script>
-async function loadPicks() {
-    try {
-        const response = await fetch('picks_today.json');
-        const data = await response.json();
-        const tbody = document.querySelector('#picks-table tbody');
-        tbody.innerHTML = '';
+      <!-- Daily Highlights -->
+      <h2>🔥 Today's Top Picks</h2>
+      <div class="highlight-section">
+        <div class="highlight-card">
+          <h3>Dodgers - Moneyline</h3>
+          <p><strong>Edge:</strong> +15% vs Padres</p>
+          <p><strong>Reason:</strong> Dodgers bullpen SIERA advantage + higher wRC+ vs RHP</p>
+        </div>
+        <div class="highlight-card">
+          <h3>Aaron Judge - HR Prop</h3>
+          <p><strong>Line:</strong> 0.5 HR (+220)</p>
+          <p><strong>Reason:</strong> 20% Barrel Rate vs LHP, wind blowing out 12mph</p>
+        </div>
+        <div class="highlight-card">
+          <h3>Max Scherzer - Strikeouts</h3>
+          <p><strong>Line:</strong> 7.5 K</p>
+          <p><strong>Reason:</strong> Faces team with 26% K% vs RHP</p>
+        </div>
+      </div>
 
-        let chartLabels = [];
-        let chartData = [];
+      <!-- Player Spotlight -->
+      <div class="spotlight">
+        <h2>⭐ Player Spotlights</h2>
+        <div class="spotlight-grid">
+          <div class="spot-card">
+            <h3>Juan Soto</h3>
+            <p>Last 7 days: .412 AVG, 3 HR, 6 RBI</p>
+            <p>Edge: +25% vs RHP today</p>
+          </div>
+          <div class="spot-card">
+            <h3>Spencer Strider</h3>
+            <p>SIERA: 2.85 | K-BB%: 27%</p>
+            <p>Prop: 9.5 Ks vs Cubs lineup (high Whiff%)</p>
+          </div>
+          <div class="spot-card">
+            <h3>Julio Rodríguez</h3>
+            <p>Barrel%: 12% | HardHit%: 48%</p>
+            <p>Prop: Over 1.5 Total Bases looks sharp</p>
+          </div>
+        </div>
+      </div>
 
-        data.games.forEach(game => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${game.matchup}<br><em>${game.pitcher_matchup}</em></td>
-                <td>${game.pick}</td>
-                <td>${(game.edge*100).toFixed(1)}%</td>
-                <td>
-                    <div class="tooltip">View Details
-                        <span class="tooltiptext">
-                        <strong>Reason:</strong> ${game.reason}<br>
-                        <strong>Team Stats:</strong> ${game.team_stats}<br>
-                        <strong>Player Stats:</strong> ${game.player_stats}<br>
-                        <strong>Odds:</strong> ${game.odds}
-                        </span>
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(row);
+      <!-- Chart Preview -->
+      <h2>📊 Quick Edge Chart Preview</h2>
+      <canvas id="quickEdgeChart" width="400" height="200"></canvas>
 
-            chartLabels.push(game.matchup);
-            chartData.push((game.edge*100).toFixed(1));
-        });
-
-        const ctx = document.getElementById('edgeChart').getContext('2d');
+      <script>
+        const ctx = document.getElementById("quickEdgeChart").getContext("2d");
         new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: chartLabels,
-                datasets: [{
-                    label: 'Edge %',
-                    data: chartData,
-                    backgroundColor: 'rgba(0, 123, 255, 0.7)',
-                    borderColor: 'rgba(0, 123, 255, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: { y: { beginAtZero: true, max: 50 } }
+          type: "bar",
+          data: {
+            labels: ["Dodgers", "Padres", "Yankees", "Red Sox"],
+            datasets: [{
+              label: "AI Edge %",
+              data: [65, 48, 60, 55],
+              backgroundColor: ["#00ffcc", "#ff3366", "#3399ff", "#ffcc00"]
+            }]
+          },
+          options: {
+            plugins: {
+              title: { display: true, text: "Team Edge Preview (AI Model)" }
             }
+          }
         });
+      </script>
+    </section>
 
-    } catch (error) {
-        console.error('Error loading picks:', error);
-        document.querySelector('#picks-table tbody').innerHTML = '<tr><td colspan="4">Error loading picks</td></tr>';
-    }
-}
-loadPicks();
-</script>
+    <!-- Placeholder for other pages -->
+    <section id="games" class="page hidden"><h1>Today's Games</h1><div id="games-list"></div></section>
+    <section id="teamEdge" class="page hidden"><h1>Team Edge Ratings</h1><canvas id="teamEdgeChart"></canvas></section>
+    <section id="playerProps" class="page hidden"><h1>Player Props</h1><div id="player-props"></div></section>
+    <section id="advancedStats" class="page hidden"><h1>Advanced Stats</h1><canvas id="statsChart"></canvas></section>
+    <section id="oddsTracker" class="page hidden"><h1>Odds Tracker</h1><div id="odds-table"></div></section>
+
+    <!-- Footer -->
+    <footer>
+      <p>Powered by AI + MLB Advanced Stats</p>
+      <p>Data Sources:
+        <a href="https://www.fangraphs.com" target="_blank">FanGraphs</a> |
+        <a href="https://baseballsavant.mlb.com/" target="_blank">Baseball Savant</a> |
+        <a href="https://www.vegasinsider.com/" target="_blank">Vegas Insider</a>
+      </p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="teamEdge.js"></script>
+  <script src="playerProps.js"></script>
+  <script src="advancedStats.js"></script>
+  <script src="oddsTracker.js"></script>
 </body>
 </html>
+<head>
+  <!-- existing head content -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Sidebar Styling */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 240px;
+      height: 100vh;
+      background: #1b1b2f;
+      color: white;
+      padding: 20px;
+      transition: width 0.3s ease;
+      overflow: hidden;
+      z-index: 1000;
+    }
+    .sidebar.collapsed {
+      width: 70px;
+    }
+    .sidebar h2 {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      transition: opacity 0.3s ease;
+    }
+    .sidebar.collapsed h2 {
+      opacity: 0;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
+    .sidebar ul li {
+      margin: 15px 0;
+    }
+    .sidebar ul li a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #ccc;
+      text-decoration: none;
+      font-size: 1.1em;
+      padding: 10px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    .sidebar ul li a:hover {
+      background: #292945;
+      color: #00ffcc;
+      transform: translateX(5px);
+    }
+    .sidebar.collapsed ul li a span {
+      display: none;
+    }
+    .toggle-btn {
+      position: absolute;
+      top: 20px;
+      right: -15px;
+      background: #00ffcc;
+      color: #000;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .main {
+      margin-left: 260px;
+      padding: 20px;
+      transition: margin-left 0.3s ease;
+    }
+    .sidebar.collapsed ~ .main {
+      margin-left: 90px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="sidebar" id="sidebar">
+    <h2>⚾ Picks</h2>
+    <div class="toggle-btn" id="toggleSidebar">☰</div>
+    <ul>
+      <li><a href="#" onclick="showPage('home')"><i data-lucide="home"></i><span>Home</span></a></li>
+      <li><a href="#" onclick="showPage('games')"><i data-lucide="calendar"></i><span>Today's Games</span></a></li>
+      <li><a href="#" onclick="showPage('teamEdge')"><i data-lucide="bar-chart"></i><span>Team Edge</span></a></li>
+      <li><a href="#" onclick="showPage('playerProps')"><i data-lucide="user"></i><span>Player Props</span></a></li>
+      <li><a href="#" onclick="showPage('advancedStats')"><i data-lucide="pie-chart"></i><span>Advanced Stats</span></a></li>
+      <li><a href="#" onclick="showPage('oddsTracker')"><i data-lucide="trending-up"></i><span>Odds Tracker</span></a></li>
+    </ul>
+  </div>
+
+  <div class="main">
+    <!-- existing homepage content -->
+  </div>
+
+  <script>
+    lucide.createIcons(); // Load Lucide icons
+    const sidebar = document.getElementById("sidebar");
+    const toggle = document.getElementById("toggleSidebar");
+    toggle.addEventListener("click", () => {
+      sidebar.classList.toggle("collapsed");
+    });
+  </script>
+</body>
