@@ -316,3 +316,78 @@
     });
   </script>
 </body>
+<script>
+async function loadData() {
+  // Load today's games
+  const games = await fetch("games_today.json").then(res => res.json());
+  const gamesTable = document.querySelector("#gamesTable tbody");
+  gamesTable.innerHTML = "";
+  games.forEach(g => {
+    gamesTable.innerHTML += `
+      <tr>
+        <td>${g.time}</td>
+        <td>${g.away}</td>
+        <td>${g.home}</td>
+        <td>${g.awayPitcher} vs. ${g.homePitcher}</td>
+        <td>${g.edge}%</td>
+      </tr>`;
+  });
+
+  // Load team edge ratings
+  const edges = await fetch("team_edge.json").then(res => res.json());
+  const chartData = edges.map(e => ({ team: e.team, edge: e.edge }));
+  renderEdgeChart(chartData);
+
+  // Load player props
+  const props = await fetch("player_props.json").then(res => res.json());
+  const propsGrid = document.querySelector("#playerPropsGrid");
+  propsGrid.innerHTML = "";
+  props.forEach(p => {
+    propsGrid.innerHTML += `
+      <div class="prop-card">
+        <h3>${p.player} (${p.team})</h3>
+        <p><strong>Matchup:</strong> vs ${p.opponentPitcher}</p>
+        <p><strong>Prop:</strong> ${p.market} (${p.line})</p>
+        <p><strong>Edge:</strong> ${p.edgeReasoning}</p>
+      </div>`;
+  });
+
+  // Load odds tracker
+  const odds = await fetch("odds.json").then(res => res.json());
+  const oddsTable = document.querySelector("#oddsTable tbody");
+  oddsTable.innerHTML = "";
+  odds.forEach(o => {
+    oddsTable.innerHTML += `
+      <tr>
+        <td>${o.matchup}</td>
+        <td>${o.opening}</td>
+        <td>${o.current}</td>
+        <td>${o.movement}</td>
+      </tr>`;
+  });
+
+  // Load ticker
+  const ticker = await fetch("ticker.json").then(res => res.json());
+  document.getElementById("liveTicker").innerText = ticker.join("  •  ");
+}
+
+// Render chart with Chart.js
+function renderEdgeChart(data) {
+  const ctx = document.getElementById("teamEdgeChart").getContext("2d");
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.team),
+      datasets: [{
+        label: "Edge %",
+        data: data.map(d => d.edge),
+        backgroundColor: "#00ffcc"
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+  });
+}
+
+// Auto load on page start
+loadData();
+</script>
