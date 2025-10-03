@@ -1,80 +1,103 @@
-"""
-fetch_player_stats.py
+# fetch_player_stats.py
+import os, json, time, requests, pandas as pd
+from retrying import retry
+from datetime import datetime, timezone
+from urllib.parse import urlencode
 
-Uses pybaseball to pull Statcast leaderboards / player-level advanced metrics.
-Outputs data/players_stats.json (map: player_name -> metrics dict)
+OUTDIR = "data"
+CACHE = "data/cache"
+os.makedirs(OUTDIR, exist_ok=True)
+os.makedirs(CACHE, exist_ok=True)
 
-Requires 'pybaseball' (pip install pybaseball).
-pybaseball wraps Baseball Savant calls and offers statcast_leaderboard and playerid_lookup.
-"""
-import os, json, logging
-from datetime import datetime
-from pybaseball import statcast_batter, playerid_lookup, statcast_bat_exitvelo_barrels, leaderboards
-import pandas as pd
+# Baseball Savant leaderboard CSV base - we will call the custom leaderboard csv pattern.
+# NOTE: Baseball Savant's query parameters are detailed; below is a robust attempt to use the 'leaderboard' csv export.
+SAVANT_LEADERBOARD_CSV = "https://baseballsavant.mlb.com/leaderboard/custom?{}"
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("fetch_player_stats")
+@retry(stop_max_attempt_number=3, wait_fixed=900)
+def fetch_savant_leaderboard_csv(params):
+    url = SAVANT_LEADERBOARD_CSV.format(urlencode(params))
+    r = requests.get(url, timeout=25)
+    r.raise_for_status()
+    return r.text
 
-OUT_PATH = "data/players_stats.json"
-os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
-
-def build_players_from_leaderboards(season=None):
-    """
-    Use pybaseball leaderboards (statcast) to get top batters metrics, plus per-player season aggregates.
-    We'll build a dictionary keyed by player name (last, first combined) with fields:
-    xwOBA, wOBA, wRC+, Barrel%, HardHit%, EV, xBA, xSLG, Pull%, Oppo%, SwStr% (where available)
-    """
-    logger.info("Fetching statcast leaderboards via pybaseball (may take 30s)...")
-    players = {}
-
-    # pybaseball leaderboards module provides functions like batted_ball, exitvelo, etc.
-    # We'll fetch statcast batting leaderboards for the current season for standard metrics:
+def parse_csv_to_df(csv_text):
+    from io import StringIO
     try:
-        # Example: get Exit Velo & Barrels leaderboards
-        bb_df = leaderboards('batter_exit_velocity', season=season)  # may be "statcast"
+        df = pd.read_csv(StringIO(csv_text))
+        return df
     except Exception:
-        # fallback: use smaller functions or sample datasets
-        bb_df = pd.DataFrame()
+        return pd.DataFrame()
 
-    # For wide coverage, iterate over top batters via statcast_batter for season and aggregate
-    # Use playerid_lookup for mapping by name
-    # NOTE: pybaseball has convenience functions; in interest of reliability, we'll build using available leaderboards
-    # Fallback: Build few sample players if API fails
-    if bb_df.empty:
-        logger.warning("Leaderboards empty; building small sample set")
-        sample = [
-            {"name":"Aaron Judge", "xwOBA":0.430, "wOBA":0.405, "wRC+":160, "Barrel%":0.12, "HardHit%":0.52, "xSLG":0.650},
-            {"name":"Mookie Betts", "xwOBA":0.420, "wOBA":0.380, "wRC+":140, "Barrel%":0.08, "HardHit%":0.48, "xSLG":0.610},
-        ]
-        for s in sample:
-            players[s['name']] = s
-        with open(OUT_PATH, "w") as f:
-            json.dump({"updated": datetime.utcnow().isoformat(), "players": players}, f, indent=2)
-        return OUT_PATH
+def build_hitter_cache(season=2025):
+    # Params below are a template. Depending on Savant's exact query param names, tweak as needed.
+    params = {
+        "type": "batter",
+        "season": season,
+        "page": "1",
+        "csv": "1",  # attempt to ask for CSV
+    }
+    try:
+        csv_text = fetch_savant_leaderboard_csv(params)
+        df = parse_csv_to_df(csv_text)
+    except Exception as e:
+        print("Savant hitter fetch failed:", e)
+        df = pd.DataFrame()
 
-    # If leaderboards returned, map columns to sensible metrics.
-    # NOTE: column names vary; this code is defensive.
-    for _, row in bb_df.iterrows():
-        try:
-            name = row.get("player_name") or (row.get("first_name", "") + " " + row.get("last_name", ""))
-            players[name] = {
-                "name": name,
-                "barrel_pct": float(row.get("barrel_percent", row.get("Barrel%", 0)) or 0),
-                "hardhit_pct": float(row.get("hard_hit_percent", row.get("HardHit%", 0)) or 0),
-                "exit_vel": float(row.get("avg_ev", row.get("EV", 0)) or 0),
-                "xwOBA": float(row.get("xwOBA", row.get("xwOBA", 0)) or 0),
-                "xBA": float(row.get("xBA", 0) or 0),
-                "xSLG": float(row.get("xSLG", 0) or 0),
-                "wRC+": float(row.get("wrc_plus", row.get("wRC+", 100)) or 100)
+    mapping = {}
+    if not df.empty:
+        # Try to pick standard columns, fallback if not
+        for _, row in df.iterrows():
+            name = row.get("player_name") or row.get("Player") or row.get("Name")
+            if not name: continue
+            mapping[name] = {
+                "xwOBA": row.get("xwOBA", None),
+                "Barrel%": row.get("barrel_percent") or row.get("Barrel%"),
+                "HardHit%": row.get("HardHit%") or row.get("hard_hit_percent"),
+                "xBA": row.get("xBA", None),
+                "xSLG": row.get("xSLG", None),
+                "ISO": row.get("ISO", None),
+                "BABIP": row.get("BABIP", None),
+                "PA": row.get("PA", None)
             }
-        except Exception as e:
-            logger.debug("Skipping row parse error: %s", e)
-            continue
+    # write cache
+    path = os.path.join(CACHE, f"hitter_stats_{season}.json")
+    with open(path, "w") as f:
+        json.dump(mapping, f, indent=2)
+    print("Wrote hitter cache:", path)
+    return mapping
 
-    with open(OUT_PATH, "w") as f:
-        json.dump({"updated": datetime.utcnow().isoformat(), "players": players}, f, indent=2)
-    logger.info("Wrote %d player metric entries", len(players))
-    return OUT_PATH
+def build_pitcher_cache(season=2025):
+    params = {"type": "pitcher", "season": season, "csv": "1"}
+    try:
+        csv_text = fetch_savant_leaderboard_csv(params)
+        df = parse_csv_to_df(csv_text)
+    except Exception as e:
+        print("Savant pitcher fetch failed:", e)
+        df = pd.DataFrame()
+
+    mapping = {}
+    if not df.empty:
+        for _, row in df.iterrows():
+            name = row.get("player_name") or row.get("Player")
+            if not name: continue
+            mapping[name] = {
+                "xFIP": row.get("xFIP"),
+                "SIERA": row.get("SIERA"),
+                "CSW": row.get("CSW%") or row.get("CSW"),
+                "SwStr%": row.get("SwStr%") or row.get("SwStr"),
+                "K9": row.get("K/9") or row.get("K9"),
+                "BB9": row.get("BB/9") or row.get("BB9"),
+                "HR/FB": row.get("HR/FB") or row.get("HR/FB%")
+            }
+    path = os.path.join(CACHE, f"pitcher_stats_{season}.json")
+    with open(path, "w") as f:
+        json.dump(mapping, f, indent=2)
+    print("Wrote pitcher cache:", path)
+    return mapping
+
+def main():
+    build_hitter_cache()
+    build_pitcher_cache()
 
 if __name__ == "__main__":
-    build_players_from_leaderboards()
+    main()
