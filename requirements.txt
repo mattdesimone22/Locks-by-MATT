@@ -1,8 +1,15 @@
+flask==2.3.2
+flask-cors==3.0.10
 requests==2.31.0
 pandas==2.2.2
 numpy==1.26.2
 python-dotenv==1.0.0
-pybaseball==1.2.2        # wrapper for Baseball Savant / Statcast data
+beautifulsoup4==4.12.2
+aiohttp==3.9.4
+ratelimit==2.2.1
+retrying==1.3.3
 pytz==2024.4
 tqdm==4.66.1
-the-odds-api==0.1.1      # optional thin client; or use requests to call odds provider
+lxml==4.9.3
+python-Levenshtein==0.21.1
+fuzzywuzzy==0.18.0
